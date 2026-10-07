@@ -209,8 +209,8 @@ kern_return_t ksurface_fs_init(void)
         /* ROM guest applications: immutable payload mounted into rootfs. */
         {
             kFSMountAttrRead,
-            romApplicationSource.fileSystemRepresentation,
-            rootApplicationMount.fileSystemRepresentation,
+            romApplicationSource,
+            rootApplicationMount,
         },
         
         /* root mounts */
