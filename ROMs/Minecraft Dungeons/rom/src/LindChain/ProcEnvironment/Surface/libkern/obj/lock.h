@@ -1,0 +1,32 @@
+/*
+ SPDX-License-Identifier: AGPL-3.0-or-later
+
+ Copyright (C) 2025 - 2026 emexlab
+
+ This file is part of Nyxian.
+
+ Nyxian is free software: you can redistribute it and/or modify
+ it under the terms of the GNU Affero General Public License as published by
+ the Free Software Foundation, either version 3 of the License, or
+ (at your option) any later version.
+
+ Nyxian is distributed in the hope that it will be useful,
+ but WITHOUT ANY WARRANTY; without even the implied warranty of
+ MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ GNU Affero General Public License for more details.
+
+ You should have received a copy of the GNU Affero General Public License
+ along with Nyxian. If not, see <https://www.gnu.org/licenses/>.
+*/
+
+#ifndef LIBKERN_OBJ_LOCK_H
+#define LIBKERN_OBJ_LOCK_H
+
+#import <LindChain/ProcEnvironment/Surface/libkern/obj/defs.h>
+#import <LindChain/ProcEnvironment/Surface/lock.h>
+
+#define kvo_rdlock(obj) PTHREAD_RWLOCK_DEBUG_IMP_RDLOCK(&(((kvobject_t *)obj)->rwlock))
+#define kvo_wrlock(obj) PTHREAD_RWLOCK_DEBUG_IMP_WRLOCK(&(((kvobject_t *)obj)->rwlock))
+#define kvo_unlock(obj) PTHREAD_RWLOCK_DEBUG_IMP_UNLOCK(&(((kvobject_t *)obj)->rwlock))
+
+#endif /* LIBKERN_OBJ_LOCK_H */

@@ -1,0 +1,48 @@
+/*
+ SPDX-License-Identifier: AGPL-3.0-or-later
+
+ Copyright (C) 2025 - 2026 emexlab
+
+ This file is part of Nyxian.
+
+ Nyxian is free software: you can redistribute it and/or modify
+ it under the terms of the GNU Affero General Public License as published by
+ the Free Software Foundation, either version 3 of the License, or
+ (at your option) any later version.
+
+ Nyxian is distributed in the hope that it will be useful,
+ but WITHOUT ANY WARRANTY; without even the implied warranty of
+ MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ GNU Affero General Public License for more details.
+
+ You should have received a copy of the GNU Affero General Public License
+ along with Nyxian. If not, see <https://www.gnu.org/licenses/>.
+*/
+
+#ifndef PEKEXT_H
+#define PEKEXT_H
+
+#import <Foundation/Foundation.h>
+#import <LindChain/ProcEnvironment/KextLoader/PEDependency.h>
+
+@interface PEKext : NSObject
+
+@property (nonatomic,copy) NSString *executablePath;
+@property (nonatomic,copy) NSString *bundlePath;
+@property (nonatomic,copy) NSString *bundleID;
+@property (nonatomic,copy) NSString *version;
+@property (nonatomic,strong) NSArray<PEDependency*> *dependencies;
+@property (nonatomic) uint64_t flags;
+@property (nonatomic) uint32_t abi_version;
+@property (atomic) BOOL isEnabled;
+
+- (int)load;
+
+- (instancetype)initWithPath:(NSString*)path;
+
++ (instancetype)appleIOSKext;
++ (instancetype)ksurfaceMainKext;
+
+@end
+
+#endif /* PEKEXT_H */

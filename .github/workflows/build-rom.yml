@@ -1,0 +1,58 @@
+name: Build ROM
+
+on:
+  push:
+    paths:
+      - 'ROMs/**'
+      - '.github/workflows/build-rom.yml'
+  pull_request:
+    paths:
+      - 'ROMs/**'
+      - '.github/workflows/build-rom.yml'
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: Build Minecraft Dungeons ROM
+    runs-on: macos-latest
+    defaults:
+      run:
+        working-directory: ROMs/Minecraft Dungeons
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Verify Xcode / iOS SDK
+        run: |
+          set -e
+          xcodebuild -version
+          xcrun --sdk iphoneos --show-sdk-version
+
+      - name: Validate manifest.plist
+        run: |
+          set -e
+          make validate
+
+      - name: Build rom.zip
+        run: |
+          set -e
+          make
+
+      - name: Sanity check package
+        run: |
+          set -e
+          unzip -l rom.zip
+          printf '\nmanifest.plist in package:\n'
+          unzip -p rom.zip ROM/manifest.plist | head -40
+
+      - name: Upload rom.zip
+        uses: actions/upload-artifact@v7
+        with:
+          name: minecraft-dungeons-rom
+          path: ROMs/Minecraft Dungeons/rom.zip
+          if-no-files-found: error
