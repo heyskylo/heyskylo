@@ -1,6 +1,6 @@
 <table>
   <tr>
-    <td valign="middle">
+    <td >
       <h1>hey — I'm Skylo</h1>
       <p>
         systems developer, mostly — i live somewhere in between the compiler and the
