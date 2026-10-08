@@ -30,8 +30,10 @@ static NSString * const NXLinuxKernelName = @"vmlinuz-virt-6.18.35";
 static NSString * const NXLinuxInitrdName = @"rish-container.cpio";
 static NSString * const NXLinuxMemoryDefaultsKey = @"nyxian.boot.linux.memoryMB";
 
-/* record separator (U+001E) used to recover the guest's cwd after each command */
-static NSString * const NXRishCwdMark = @"\u001E";
+/* record separator (U+001E) used to recover the guest's cwd after each command.
+   "\u001E" would be a universal character name for a control character, which
+   the C standard forbids; "\x1E" is the identical single UTF-8 byte. */
+static NSString * const NXRishCwdMark = @"\x1E";
 
 #pragma mark - Theme
 
