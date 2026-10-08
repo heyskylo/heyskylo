@@ -96,6 +96,35 @@ run_fetch_assets() { # rish_root
     fi
 }
 
+# The pinned Alpine minirootfs stores its tar members with a leading "./"
+# prefix. GNU tar (the ubuntu CI runner) does not map a bare member argument
+# such as "bin/busybox" onto the stored "./bin/busybox", so rish's upstream
+# extraction of the busybox/apk closure fails with "Not found in archive"
+# even though the archive is verified. Patch the builder to select the same
+# closure with layout-agnostic --wildcards patterns ("*" also matches a bare
+# member), which works under both GNU tar and bsdtar.
+apply_rish_builder_patch() { # rish_root builder_script
+    root=$1
+    case "$2" in
+    */build-container-initramfs.sh) ;;
+    *) return 0 ;;
+    esac
+    builder="$root/$2"
+    [ -f "$builder" ] || die "builder not found: $builder"
+    patch_file="$script_dir/patches/rish-gnutar-compat.patch"
+    [ -f "$patch_file" ] || die "rish builder patch not found: $patch_file"
+    command -v git >/dev/null 2>&1 ||
+        die "git is required to apply the rish builder compatibility patch"
+    if git -C "$root" apply --check "$patch_file" 2>/dev/null; then
+        git -C "$root" apply "$patch_file"
+        printf 'patched %s for GNU tar ./-prefix members (%s)\n' "$builder" "$(basename -- "$patch_file")"
+    elif git -C "$root" apply --reverse --check "$patch_file" 2>/dev/null; then
+        printf 'already patched %s\n' "$builder"
+    else
+        die "cannot apply rish builder patch ($patch_file) to $builder; rish checkout changed?"
+    fi
+}
+
 mkdir -p "$guest_dir"
 [ -f "$lock_file" ] || die "missing lock file: $lock_file"
 command -v curl >/dev/null 2>&1 || die "curl is required"
@@ -133,6 +162,7 @@ while IFS=$(printf '\t') read -r name size sha source _; do
                 printf 'fetching pinned rish guest assets via guest/x86_64/fetch-assets.sh\n'
                 run_fetch_assets "$rish_root"
             fi
+            apply_rish_builder_patch "$rish_root" "$script"
             printf 'building %s via %s\n' "$name" "$script"
             (cd "$rish_root" && "$builder")
             produced="$(dirname "$builder")/out/$name"

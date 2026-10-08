@@ -60,15 +60,19 @@ jobs:
         with:
           targets: x86_64-unknown-linux-musl
 
-      - name: Install archive and squashfs tooling
+      - name: Install archive, squashfs, and musl tooling
         run: |
           sudo apt-get update -qq
-          sudo apt-get install -y -qq cpio squashfs-tools
+          sudo apt-get install -y -qq cpio squashfs-tools musl-tools
+        # musl-tools provides musl-gcc; rish's .cargo/config.toml expects
+        # x86_64-linux-musl-gcc (brew musl-cross on macOS), so the step below
+        # maps the guest-agent link onto musl-gcc via the CARGO_*_LINKER env var.
 
       - name: Stage guest images
         env:
           RISH_INITRD_URL: ${{ vars.RISH_INITRD_URL }}
           RISH_INITRD_SHA256: ${{ vars.RISH_INITRD_SHA256 }}
+          CARGO_TARGET_X86_64_UNKNOWN_LINUX_MUSL_LINKER: musl-gcc
         run: |
           set -e
           ./scripts/prepare-guest-images.sh
