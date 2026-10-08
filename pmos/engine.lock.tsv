@@ -1,0 +1,20 @@
+# postmarketOS Phone ROM engine pins
+# name<TAB>ref<TAB>sha256(or tag note)<TAB>source
+#
+# The VM engine is QEMU, built as an in-process iOS library, JIT-accelerated
+# exactly like Husk does it (TCG with a debugger-granted split-W^X region).
+# The ROM host dlopens the dylib at runtime (LindChain/Phone/NXPMOSEngine);
+# this ROM does NOT vendor the engine build itself yet, so bots/CI validate
+# the host image and guest-image pipeline, and the engine milestone lands on
+# top of them.
+#
+# Husk — the iOS Android emulator whose JIT substrate + display-bridge design
+# the engine borrows (X/W^X allocator, DisplayChangeListener -> Metal blit,
+# virtio-tablet touch). GPL-2.0-or-later.
+Leviidev/Husk	4754b5e508c3879ec97c4f0827e994bae841ec39	-	https://github.com/Leviidev/Husk
+# UTM's QEMU fork used by Husk — built with -Dshared_lib=true so it can live
+# in-process as libqemu-x86_64-softmmu.dylib. GPLv2.
+utmapp/qemu	v10.0.12-utm	-	https://github.com/utmapp/qemu/releases
+# XZ decoder vendored in rom/src/xz (public domain / 0BSD), the on-device
+# decompressor for the .img.xz guest image. Already vendored at this pin.
+tukaani-project/xz-embedded	ae63ae3a36ed01724674e8f3d750dc47bf125410	-	https://github.com/tukaani-project/xz-embedded

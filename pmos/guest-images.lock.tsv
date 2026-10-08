@@ -1,0 +1,15 @@
+# postmarketOS Phone ROM guest images
+# name<TAB>size<TAB>sha256<TAB>source
+#
+#   source = https://...  downloaded by the ROM host on first boot, then
+#                         verified against this lock (bytes from the xz
+#                         stream itself, so the pin covers the compressed
+#                         artifact exactly).
+#
+# postmarketOS v25.12, generic-x86_64, Phosh UI, LTS kernel. The artifact is
+# the XZ-compressed raw disk image from the official Nura image server; the
+# host downloads it, verifies it, and decompresses it in-slot with the
+# vendored XZ-Embedded decoder (rom/src/xz, pinned) before QEMU boots it
+# (UEFI/GPT, kernel boot, no container). Decompresses to a ~4,080,009,216-byte
+# raw image; the pin in this table covers the compressed artifact stream.
+postmarketos.img.xz	1555991728	1d7a5104e4ada62e229293ebeb4c1154b50eccf8810e7f941fbb50af33fcf522	https://images.nura.eco/bpo/v25.12/generic-x86_64/phosh/20260803-0207/20260803-0207-postmarketOS-v25.12-phosh-25-generic-x86_64-lts.img.xz

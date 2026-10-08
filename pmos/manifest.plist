@@ -1,0 +1,67 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<!-- ABI revision of the manifest format the bootloader must understand. -->
+	<key>NXRomManifestVersion</key>
+	<integer>1</integer>
+
+	<!-- Identity -->
+	<key>NXRomIdentifier</key>
+	<string>org.emexlabs.rom.postmarketos</string>
+	<key>NXRomName</key>
+	<string>postmarketOS Phone</string>
+	<key>NXRomVersion</key>
+	<string>0.1.0</string>
+	<key>NXRomMinimumNyxianVersion</key>
+	<string>0.11.5</string>
+
+	<!-- The slot image loaded by the bootloader (dlopen, must expose NXSlotMain). -->
+	<key>NXRomExecutable</key>
+	<string>main</string>
+
+	<!-- Shown by the bootloader while this ROM is loading. Paths are relative to
+	     the slot root; the bootloader looks up Light and Dark variants and falls
+	     back to Light when Dark is missing. -->
+	<key>NXRomBootLogo</key>
+	<dict>
+		<key>Light</key>
+		<string>assets/bootlogo.png</string>
+		<key>Dark</key>
+		<string>assets/bootlogo.png</string>
+	</dict>
+
+	<!-- Defaults applied to every extracted file/directory that is not listed
+	     in NXRomPaths below. 420 = 0644, 493 = 0755. -->
+	<key>NXRomDefaultFilePermission</key>
+	<integer>420</integer>
+	<key>NXRomDefaultDirectoryPermission</key>
+	<integer>493</integer>
+
+	<!-- Explicit per-path setup. Mach-O payloads carry the exec bit and get
+	     re-signed at flash time with the certificate imported in Nyxian
+	     (required: iOS only loads validly-signed Mach-O).
+
+	     The postmarketOS guest image is NOT shipped inside the ROM: the host
+	     downloads and verifies it on first boot (see
+	     LindChain/Phone/NXGuestImageManager) and stages it under
+	     guest/postmarketos.img in the slot root. -->
+	<key>NXRomPaths</key>
+	<array>
+		<dict>
+			<key>NXPath</key>
+			<string>main</string>
+			<key>NXPermission</key>
+			<integer>493</integer>
+			<key>NXRequiresCodeSigning</key>
+			<true/>
+		</dict>
+		<dict>
+			<key>NXPath</key>
+			<string>assets/bootlogo.png</string>
+			<key>NXPermission</key>
+			<integer>420</integer>
+		</dict>
+	</array>
+</dict>
+</plist>
