@@ -57,7 +57,20 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Select Xcode
-        run: sudo xcode-select -s /Applications/Xcode_*.app
+        run: |
+          # macOS runners already have a configured developer dir; only switch
+          # when the toolchain is genuinely missing, and never with an unexpanded
+          # glob (which makes xcode-select fail with "invalid argument").
+          if ! xcodebuild -version >/dev/null 2>&1; then
+            set -e
+            XCODE_APP=$(ls -d /Applications/Xcode*.app 2>/dev/null | head -n 1)
+            if [ -z "$XCODE_APP" ]; then
+              echo "no Xcode bundle found under /Applications" >&2
+              exit 1
+            fi
+            sudo xcode-select -s "$XCODE_APP"
+          fi
+          xcodebuild -version
       - name: Validate manifest
         run: make -C pmos validate
       - name: Build host + package rom.zip
