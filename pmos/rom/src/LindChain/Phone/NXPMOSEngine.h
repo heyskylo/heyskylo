@@ -74,6 +74,8 @@ typedef NS_ENUM(NSInteger, NXPMOSEngineEndReason)
 @property (nonatomic, readonly) NXPMOSJITStatus jitStatus;
 @property (nonatomic, readonly, copy) NSString *diskPath;
 @property (nonatomic, readonly) NSUInteger memoryMiB;
+@property (nonatomic, readonly, nullable) NSURL *slotURL;
+@property (nonatomic, readonly, nullable) NSURL *dataURL;
 
 /* Best-effort JIT warm-up performed as soon as the slot host is up. Installs
    the breakpoint trap handler and, when a servicer is attached, claims and
