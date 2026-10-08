@@ -25,7 +25,7 @@ CC          := $(shell xcrun -sdk $(SDK) -f clang)
 LD          := $(shell xcrun -sdk $(SDK) -f clang++)
 SYSROOT     := $(shell xcrun -sdk $(SDK) --show-sdk-path)
 
-SRCS        := $(shell find $(SRCDIR) \( -name '*.m' -o -name '*.c' \))
+SRCS        := $(shell find $(SRCDIR) \( -name '*.m' -o -name '*.c' \) | grep -v '^rom/src/engine/')
 OBJS        := $(SRCS:%=build/%.o)
 
 CFLAGS      := -arch $(ARCH) -isysroot $(SYSROOT) -miphoneos-version-min=$(MIN_IOS) \
