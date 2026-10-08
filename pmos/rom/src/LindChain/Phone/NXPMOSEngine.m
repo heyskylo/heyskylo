@@ -216,7 +216,7 @@ static BOOL gPrewarmed = NO;
 
 - (instancetype)init
 {
-    return [self initWithDiskPath:@"" memoryMiB:NXDefaultMemoryMiB slotURL:nil dataURL:nil];
+    return [self initWithDiskPath:@"" memoryMiB:3072 slotURL:nil dataURL:nil];
 }
 
 - (void)dealloc
@@ -235,7 +235,7 @@ static BOOL gPrewarmed = NO;
 
 - (NSUInteger)computedMemoryMiB
 {
-    NSUInteger requested = (self.memoryMiB > 0) ? self.memoryMiB : NXDefaultMemoryMiB;
+    NSUInteger requested = (self.memoryMiB > 0) ? self.memoryMiB : 3072;
     if (gSym.nxpAvailableMemory == NULL)
     {
         return requested;
