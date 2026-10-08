@@ -122,7 +122,7 @@
     self.state = NXBootStateChecking;
     [self configureUIWithMessage:@"checking for a staged postmarketOS image…"
                          spinner:YES
-                        progress:0.0
+                        progress:-1.0
                      buttonTitle:nil
                             action:nil];
 
@@ -148,7 +148,7 @@
     __weak typeof(self) weakSelf = self;
     [self configureUIWithMessage:@"postmarketOS · Phosh\nno image staged in the slot yet"
                          spinner:NO
-                        progress:0.0
+                        progress:-1.0
                      buttonTitle:@"Download postmarketOS image (1.4 GB)"
                             action:^{ [weakSelf beginDownload]; }];
 }
@@ -230,7 +230,7 @@
     self.progressBar.hidden = YES;
     [self configureUIWithMessage:@"booting postmarketOS…"
                          spinner:YES
-                        progress:0.0
+                        progress:-1.0
                      buttonTitle:nil
                             action:nil];
 
@@ -259,7 +259,7 @@
                 /* Engine library present but boot driver not wired yet. */
                 [weakSelf configureUIWithMessage:error.localizedDescription
                                          spinner:NO
-                                        progress:0.0
+                                        progress:-1.0
                                      buttonTitle:@"Recheck"
                                             action:^{ [weakSelf checkImage]; }];
             }
@@ -293,7 +293,7 @@
                                   @"guest is ready — the engine milestone builds libqemu-x86_64-softmmu "
                                   @"and ships it in the slot Frameworks directory."
                          spinner:NO
-                        progress:0.0
+                        progress:-1.0
                      buttonTitle:@"Recheck image"
                             action:^{ [weakSelf checkImage]; }];
 }
@@ -304,7 +304,7 @@
     __weak typeof(self) weakSelf = self;
     [self configureUIWithMessage:[NSString stringWithFormat:@"Something went wrong\n\n%@", message]
                          spinner:NO
-                        progress:0.0
+                        progress:-1.0
                      buttonTitle:@"Retry"
                             action:^{ [weakSelf checkImage]; }];
 }

@@ -67,8 +67,9 @@ static NSString *NXSHA256OfFile(NSString *path)
 static void NXGuestImageXZProgress(void *ctx,
                                    unsigned long long consumed,
                                    unsigned long long total,
-                                   unsigned long long produced __unused)
+                                   unsigned long long produced)
 {
+    (void)produced;
     NXGuestImageManager *manager = (__bridge NXGuestImageManager *)ctx;
     dispatch_async(dispatch_get_main_queue(), ^{
         [manager reportXZProgress:consumed total:total];
