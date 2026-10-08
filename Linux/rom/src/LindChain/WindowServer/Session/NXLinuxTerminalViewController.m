@@ -50,10 +50,13 @@ static UIColor *TerminalFailure(void)  { return [UIColor colorWithRed:1.00 green
 
 @property (nonatomic, strong) NSURL *slotURL;
 
-/* The whole UI is: a black screen, the transcript, and an invisible input field
-   that feeds commands to the guest. No headers, bars, buttons, or status chrome. */
+/* Plain terminal UI, like iSH: a black screen, the scrollable transcript, and a
+   visible monospaced prompt line (`cwd $ ` + live input) pinned above the
+   keyboard. No headers, bars, buttons, or status chrome. */
 @property (nonatomic, strong) UITextView *transcript;
+@property (nonatomic, strong) UILabel *promptLabel;
 @property (nonatomic, strong) UITextField *input;
+@property (nonatomic, strong) NSLayoutConstraint *promptLineBottom;
 
 @property (nonatomic, strong) NXRish *session;
 @property (nonatomic, strong) NSDate *bootStart;
@@ -75,10 +78,19 @@ static UIColor *TerminalFailure(void)  { return [UIColor colorWithRed:1.00 green
     return self;
 }
 
+- (void)dealloc
+{
+    [NSNotificationCenter.defaultCenter removeObserver:self];
+}
+
 - (void)viewDidLoad
 {
     [super viewDidLoad];
     [self buildUI];
+    [NSNotificationCenter.defaultCenter addObserver:self
+                                           selector:@selector(keyboardWillChange:)
+                                               name:UIKeyboardWillChangeFrameNotification
+                                             object:nil];
     [self bootGuest];
 }
 
@@ -243,6 +255,7 @@ static UIColor *TerminalFailure(void)  { return [UIColor colorWithRed:1.00 green
             if(guestDir.length > 0)
             {
                 self.cwd = guestDir;
+                [self updatePrompt];
             }
             if(stdoutString.length > 0)
             {
@@ -292,30 +305,43 @@ static UIColor *TerminalFailure(void)  { return [UIColor colorWithRed:1.00 green
     return dir;
 }
 
-#pragma mark - UI (plain black terminal)
+#pragma mark - UI (iSH-style terminal)
+
+- (void)updatePrompt
+{
+    self.promptLabel.text = [NSString stringWithFormat:@"%@ $ ", self.cwd];
+}
 
 - (void)buildUI
 {
     self.view.backgroundColor = UIColor.blackColor;
 
-    /* Transcript fills the screen. Text only — no card, border, or title bar. */
+    /* Transcript: the scrollable boot + command output history. */
     self.transcript = [UITextView new];
     self.transcript.backgroundColor = [UIColor clearColor];
     self.transcript.editable = NO;
     self.transcript.selectable = NO;
     self.transcript.font = [UIFont monospacedSystemFontOfSize:13 weight:UIFontWeightRegular];
     self.transcript.textColor = TerminalText();
-    self.transcript.textContainerInset = UIEdgeInsetsMake(10, 6, 10, 6);
+    self.transcript.textContainerInset = UIEdgeInsetsMake(10, 8, 10, 8);
     self.transcript.translatesAutoresizingMaskIntoConstraints = NO;
     [self.view addSubview:self.transcript];
 
-    /* Invisible input: no background, border, text, or caret. It just captures
-       the keyboard; the submitted command is echoed into the transcript. */
+    /* Prompt line: `cwd $ ` + live input, plain monospaced text on black with
+       no background or border, pinned just above the keyboard so you can see
+       what you type. */
+    self.promptLabel = [UILabel new];
+    self.promptLabel.font = [UIFont monospacedSystemFontOfSize:14 weight:UIFontWeightBold];
+    self.promptLabel.textColor = TerminalPrompt();
+    self.promptLabel.translatesAutoresizingMaskIntoConstraints = NO;
+    [self.view addSubview:self.promptLabel];
+
     self.input = [UITextField new];
     self.input.backgroundColor = UIColor.clearColor;
     self.input.borderStyle = UITextBorderStyleNone;
-    self.input.textColor = UIColor.clearColor;
-    self.input.tintColor = UIColor.clearColor;
+    self.input.font = [UIFont monospacedSystemFontOfSize:14 weight:UIFontWeightRegular];
+    self.input.textColor = TerminalText();
+    self.input.tintColor = TerminalText();
     self.input.autocapitalizationType = UITextAutocapitalizationTypeNone;
     self.input.autocorrectionType = UITextAutocorrectionTypeNo;
     self.input.spellCheckingType = UITextSpellCheckingTypeNo;
@@ -324,19 +350,27 @@ static UIColor *TerminalFailure(void)  { return [UIColor colorWithRed:1.00 green
     self.input.returnKeyType = UIReturnKeyGo;
     self.input.enabled = NO;
     self.input.delegate = self;
+    [self.input setContentHuggingPriority:UILayoutPriorityDefaultLow forAxis:UILayoutConstraintAxisHorizontal];
     self.input.translatesAutoresizingMaskIntoConstraints = NO;
     [self.view addSubview:self.input];
+
+    [self updatePrompt];
+
+    self.promptLineBottom = [self.input.bottomAnchor constraintEqualToAnchor:self.view.safeAreaLayoutGuide.bottomAnchor constant:-8];
 
     [NSLayoutConstraint activateConstraints:@[
         [self.transcript.topAnchor constraintEqualToAnchor:self.view.safeAreaLayoutGuide.topAnchor],
         [self.transcript.leadingAnchor constraintEqualToAnchor:self.view.leadingAnchor],
         [self.transcript.trailingAnchor constraintEqualToAnchor:self.view.trailingAnchor],
-        [self.transcript.bottomAnchor constraintEqualToAnchor:self.view.safeAreaLayoutGuide.bottomAnchor],
+        [self.transcript.bottomAnchor constraintEqualToAnchor:self.input.topAnchor constant:-6],
 
-        [self.input.leadingAnchor constraintEqualToAnchor:self.view.leadingAnchor],
-        [self.input.bottomAnchor constraintEqualToAnchor:self.view.safeAreaLayoutGuide.bottomAnchor],
-        [self.input.widthAnchor constraintEqualToConstant:2],
-        [self.input.heightAnchor constraintEqualToConstant:2],
+        [self.promptLabel.leadingAnchor constraintEqualToAnchor:self.view.leadingAnchor constant:8],
+        [self.promptLabel.centerYAnchor constraintEqualToAnchor:self.input.centerYAnchor],
+        [self.promptLabel.trailingAnchor constraintLessThanOrEqualToAnchor:self.input.leadingAnchor constant:-6],
+
+        [self.input.trailingAnchor constraintEqualToAnchor:self.view.trailingAnchor constant:-8],
+        self.promptLineBottom,
+        [self.input.heightAnchor constraintEqualToConstant:30],
     ]];
 
     UITapGestureRecognizer *tap = [[UITapGestureRecognizer alloc] initWithTarget:self action:@selector(focusInput)];
@@ -350,6 +384,19 @@ static UIColor *TerminalFailure(void)  { return [UIColor colorWithRed:1.00 green
     {
         [self.input becomeFirstResponder];
     }
+}
+
+- (void)keyboardWillChange:(NSNotification *)notification
+{
+    NSValue *frameValue = notification.userInfo[UIKeyboardFrameEndUserInfoKey];
+    if(![frameValue isKindOfClass:NSValue.class])
+    {
+        return;
+    }
+    CGRect keyboard = [self.view convertRect:frameValue.CGRectValue fromView:nil];
+    CGFloat overlap = MAX(0, self.view.bounds.size.height - CGRectGetMinY(keyboard) - self.view.safeAreaInsets.bottom);
+    self.promptLineBottom.constant = -(overlap + 8);
+    [self.view layoutIfNeeded];
 }
 
 - (BOOL)textFieldShouldReturn:(UITextField *)textField
