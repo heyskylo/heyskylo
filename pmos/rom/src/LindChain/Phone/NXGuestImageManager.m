@@ -92,21 +92,67 @@ static void NXGuestImageXZProgress(void *ctx,
 
 @implementation NXGuestImageManager
 
-- (instancetype)initWithSlotURL:(NSURL *)slotURL
+- (instancetype)initWithSlotURL:(NSURL *)slotURL dataURL:(NSURL *)dataURL
 {
     self = [super init];
     if (self)
     {
         _slotURL = slotURL;
+        _dataURL = dataURL;
+        [self migrateLegacySlotImage];
     }
     return self;
+}
+
+/* ROM builds before the engine milestone staged the guest inside the slot
+   (Slot/A/guest). Reflashing wiped it, but for installs that have not been
+   reflashed since, move a verified legacy image into the reflash-surviving
+   data directory instead of forcing a 1.4 GB re-download. Best-effort and
+   async: never blocks the boot flow on a migration. */
+- (void)migrateLegacySlotImage
+{
+    NSFileManager *fm = [NSFileManager defaultManager];
+    NSString *legacyDir = self.slotURL.path
+        ? [self.slotURL.path stringByAppendingPathComponent:@"guest"] : nil;
+    if (legacyDir == nil)
+    {
+        return;
+    }
+    NSString *legacyImg = [legacyDir stringByAppendingPathComponent:NXGuestTargetName];
+    NSString *legacyMarker = [legacyDir stringByAppendingPathComponent:NXGuestMarkerName];
+
+    dispatch_async(dispatch_get_global_queue(QOS_CLASS_UTILITY, 0), ^{
+        if (![fm fileExistsAtPath:legacyImg] || ![fm fileExistsAtPath:legacyMarker])
+        {
+            return;
+        }
+        if ([fm fileExistsAtPath:self.targetPath])
+        {
+            return; /* current install already staged */
+        }
+        [fm createDirectoryAtPath:self.guestDir withIntermediateDirectories:YES
+                        attributes:nil error:nil];
+        NSError *err = nil;
+        if ([fm moveItemAtPath:legacyImg toPath:self.targetPath error:&err] &&
+            [fm moveItemAtPath:legacyMarker toPath:self.markerPath error:nil])
+        {
+            NSLog(@"[nxp-guest] migrated legacy slot image to %@", self.guestDir);
+        }
+        else
+        {
+            [fm removeItemAtPath:self.targetPath error:nil];
+            NSLog(@"[nxp-guest] legacy migration failed: %@", err ?: @"unknown");
+        }
+    });
 }
 
 #pragma mark - Paths
 
 - (NSString *)guestDir
 {
-    return [self.slotURL.path stringByAppendingPathComponent:@"guest"];
+    return self.dataURL.path
+        ? [self.dataURL.path stringByAppendingPathComponent:@"guest"]
+        : [self.slotURL.path stringByAppendingPathComponent:@"guest"];
 }
 
 - (NSString *)downloadPath

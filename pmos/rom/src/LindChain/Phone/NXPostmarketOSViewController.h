@@ -13,13 +13,13 @@ NS_ASSUME_NONNULL_BEGIN
 
 @interface NXPostmarketOSViewController : UIViewController
 
-/* slotURL: the slot root the bootloader flashes this ROM into
-   (Library/Boot/Slot/A). The guest image is downloaded and staged under
-   <slot>/guest/. */
-- (instancetype)initWithSlotURL:(NSURL *)slotURL NS_DESIGNATED_INITIALIZER;
+/* slotURL: the flashed slot root (Library/Boot/Slot/A). dataURL: reflash-
+   surviving directory for the guest image, OVMF vars and logs. */
+- (instancetype)initWithSlotURL:(NSURL *)slotURL
+                        dataURL:(NSURL *)dataURL NS_DESIGNATED_INITIALIZER;
 
 - (instancetype)initWithNibName:(nullable NSString *)nibNameOrNil
-                         bundle:(nullable NSBundle *)nibBundleOrNil NS_UNAVAILABLE;
+                          bundle:(nullable NSBundle *)nibBundleOrNil NS_UNAVAILABLE;
 - (instancetype)initWithCoder:(NSCoder *)coder NS_UNAVAILABLE;
 
 @end

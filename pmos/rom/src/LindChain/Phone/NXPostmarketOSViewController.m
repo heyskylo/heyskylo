@@ -14,7 +14,7 @@
 #import "NXSurfaceView.h"
 #import "NXBootState.h"
 
-@interface NXPostmarketOSViewController () <UIGestureRecognizerDelegate>
+@interface NXPostmarketOSViewController () <UIGestureRecognizerDelegate, NXSurfaceViewDelegate>
 @property (nonatomic, strong) NXGuestImageManager *imageManager;
 @property (nonatomic, strong) NXPMOSEngine *engine;
 @property (nonatomic, assign) NXBootState state;
@@ -30,11 +30,12 @@
 @implementation NXPostmarketOSViewController
 
 - (instancetype)initWithSlotURL:(NSURL *)slotURL
+                        dataURL:(NSURL *)dataURL
 {
     self = [super initWithNibName:nil bundle:nil];
     if (self)
     {
-        _imageManager = [[NXGuestImageManager alloc] initWithSlotURL:slotURL];
+        _imageManager = [[NXGuestImageManager alloc] initWithSlotURL:slotURL dataURL:dataURL];
     }
     return self;
 }
@@ -237,7 +238,11 @@
                      buttonTitle:nil
                             action:nil];
 
-    self.engine = [[NXPMOSEngine alloc] initWithDiskPath:diskPath memoryMiB:4096];
+    self.engine = [[NXPMOSEngine alloc] initWithDiskPath:diskPath
+                                              memoryMiB:3072
+                                               slotURL:self.imageManager.slotURL
+                                               dataURL:self.imageManager.dataURL];
+    self.surfaceView.engine = self.engine;
     if (!self.engine.isAvailable)
     {
         [self showEngineUnavailable];
@@ -247,7 +252,7 @@
     __weak typeof(self) weakSelf = self;
     dispatch_async(dispatch_get_global_queue(QOS_CLASS_DEFAULT, 0), ^{
         NSError *error = nil;
-        BOOL ok = [weakSelf.engine startWithError:&error];
+        BOOL ok = [weakSelf.engine startWithError:&error endReason:nil];
         dispatch_async(dispatch_get_main_queue(), ^{
             if (weakSelf == nil)
             {
@@ -275,16 +280,27 @@
     });
 }
 
+- (void)surfaceViewDidPresentFirstFrame:(UIView *)surfaceView
+{
+    dispatch_async(dispatch_get_main_queue(), ^{
+        if (self.state != NXBootStateRunning)
+        {
+            self.state = NXBootStateRunning;
+        }
+        self.statusLabel.hidden = YES;
+        [self.spinner stopAnimating];
+        self.spinner.hidden = YES;
+        self.actionButton.hidden = YES;
+    });
+}
+
 - (void)showRunning
 {
     self.state = NXBootStateRunning;
     self.progressBar.hidden = YES;
-    self.statusLabel.hidden = YES;
-    [self.spinner stopAnimating];
-    self.spinner.hidden = YES;
-    self.actionButton.hidden = YES;
     self.surfaceView.hidden = NO;
-    [self.view setNeedsLayout];
+    self.surfaceView.delegate = self;
+    self.surfaceView.engine = self.engine;
 }
 
 - (void)showEngineUnavailable

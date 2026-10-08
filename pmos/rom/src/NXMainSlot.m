@@ -10,6 +10,7 @@
 #import <Foundation/Foundation.h>
 #import <UIKit/UIKit.h>
 #import <LindChain/Phone/NXPostmarketOSViewController.h>
+#import <LindChain/Phone/NXPMOSEngine.h>
 
 static UIWindow *gSlotWindow;
 
@@ -18,12 +19,15 @@ static UIViewController *NXSlotRootViewController(void)
     static UIViewController *controller;
     static dispatch_once_t onceToken;
     dispatch_once(&onceToken, ^{
-        // The bootloader flashes this ROM into Library/Boot/Slot/A and
-        // resolves every path in the manifest relative to that slot root.
-        // The guest image is downloaded at runtime into <slot>/guest/.
+        /* The bootloader flashes this ROM into Library/Boot/Slot/A and resolves
+           every path in the manifest relative to that slot root. Mutable
+           (reflash-surviving) state lives under Library/RomData/postmarketos/. */
         NSString *slotPath = [NSHomeDirectory() stringByAppendingPathComponent:@"Library/Boot/Slot/A"];
         NSURL *slotURL = [NSURL fileURLWithPath:slotPath isDirectory:YES];
-        controller = [[NXPostmarketOSViewController alloc] initWithSlotURL:slotURL];
+        NSString *dataPath = [[NSHomeDirectory() stringByAppendingPathComponent:@"Library/RomData"]
+            stringByAppendingPathComponent:@"postmarketos"];
+        NSURL *dataURL = [NSURL fileURLWithPath:dataPath isDirectory:YES];
+        controller = [[NXPostmarketOSViewController alloc] initWithSlotURL:slotURL dataURL:dataURL];
     });
     return controller;
 }
@@ -54,5 +58,6 @@ void *NXSlotCreateWindow(void *scenePtr)
 __attribute__((visibility("default")))
 void NXSlotDidAppear(void)
 {
+    [NXPMOSEngine warmUpJIT];
     [gSlotWindow makeKeyAndVisible];
 }

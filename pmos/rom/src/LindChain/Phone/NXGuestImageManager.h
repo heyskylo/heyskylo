@@ -31,9 +31,14 @@ typedef NS_ENUM(NSInteger, NXGuestImageErrorCode)
 @interface NXGuestImageManager : NSObject
 
 @property (nonatomic, readonly) NSURL *slotURL;
+@property (nonatomic, readonly) NSURL *dataURL;
 @property (nonatomic, readonly, getter=isDownloading) BOOL downloading;
 
-- (instancetype)initWithSlotURL:(NSURL *)slotURL;
+/* slotURL is the flashed slot root (read-only ROM payloads). The guest image
+   lives under dataURL's guest/ directory instead of inside the slot, because
+   reflashing Nyxian wipes Library/Boot/Slot/A wholesale and the 4 GB image
+   must survive that. */
+- (instancetype)initWithSlotURL:(NSURL *)slotURL dataURL:(NSURL *)dataURL;
 
 /* YES when a previously verified image is already staged (fast marker check,
    no re-hash of a 4 GB file on every launch). */
