@@ -33,7 +33,7 @@ CFLAGS      := -arch $(ARCH) -isysroot $(SYSROOT) -miphoneos-version-min=$(MIN_I
 LDFLAGS     := -arch $(ARCH) -isysroot $(SYSROOT) -miphoneos-version-min=$(MIN_IOS) \
                -dynamiclib -install_name @rpath/$(NAME) \
                -rpath @executable_path/Frameworks \
-               -framework Foundation -framework UIKit -framework CoreFoundation
+               -framework Foundation -framework UIKit -framework CoreFoundation -framework Metal -framework QuartzCore
 
 all: rom.zip
 
