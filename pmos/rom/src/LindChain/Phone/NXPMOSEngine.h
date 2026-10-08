@@ -99,7 +99,7 @@ typedef NS_ENUM(NSInteger, NXPMOSEngineEndReason)
 /* Starts QEMU on the calling thread; blocks until the guest exits. Returns NO
    with a populated error when the engine could not start; otherwise fills
    `reason`. */
-- (BOOL)startWithError:(NSError **)error endReason:(NXPMOSEngineEndReason *)reason;
+- (BOOL)startWithError:(NSError **)error endReason:(nullable NXPMOSEngineEndReason *)reasonOut;
 
 /* Requests an asynchronous shutdown. v1 is a documented no-op: the guest is
    expected to power itself off (Phosh power menu), after which the main loop

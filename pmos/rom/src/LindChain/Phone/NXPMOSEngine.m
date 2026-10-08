@@ -363,7 +363,7 @@ static BOOL gPrewarmed = NO;
 
 #pragma mark - Session
 
-- (BOOL)startWithError:(NSError **)error endReason:(NXPMOSEngineEndReason *)reasonOut
+- (BOOL)startWithError:(NSError **)error endReason:(nullable NXPMOSEngineEndReason *)reasonOut
 {
     if (![NXPMOSEngine loadEngineSymbols])
     {
