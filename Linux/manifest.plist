@@ -8,17 +8,28 @@
 
 	<!-- Identity -->
 	<key>NXRomIdentifier</key>
-	<string>org.emexlabs.rom.minecraftdungeons</string>
+	<string>org.emexlabs.rom.linuxkernel</string>
 	<key>NXRomName</key>
-	<string>Minecraft Dungeons</string>
+	<string>Linux x86_64 Kernel</string>
 	<key>NXRomVersion</key>
-	<string>1.0.0</string>
+	<string>0.67.67</string>
 	<key>NXRomMinimumNyxianVersion</key>
 	<string>0.11.5</string>
 
 	<!-- The slot image loaded by the bootloader (dlopen, must expose NXSlotMain). -->
 	<key>NXRomExecutable</key>
 	<string>main</string>
+
+	<!-- Shown by the bootloader while this ROM is loading. Paths are relative to
+	     the slot root; the bootloader looks up Light and Dark variants and falls
+	     back to Light when Dark is missing. -->
+	<key>NXRomBootLogo</key>
+	<dict>
+		<key>Light</key>
+		<string>assets/bootlogo.png</string>
+		<key>Dark</key>
+		<string>assets/bootlogo.png</string>
+	</dict>
 
 	<!-- Defaults applied to every extracted file/directory that is not listed
 	     in NXRomPaths below. 420 = 0644, 493 = 0755. -->
@@ -42,18 +53,22 @@
 		</dict>
 		<dict>
 			<key>NXPath</key>
-			<string>Application/Hello.app/Hello</string>
+			<string>assets/bootlogo.png</string>
 			<key>NXPermission</key>
-			<integer>493</integer>
-			<key>NXRequiresCodeSigning</key>
-			<true/>
+			<integer>420</integer>
+		</dict>
+		<dict>
+			<key>NXPath</key>
+			<string>kernel/vmlinuz-virt-6.18.35</string>
+			<key>NXPermission</key>
+			<integer>420</integer>
+		</dict>
+		<dict>
+			<key>NXPath</key>
+			<string>initramfs/rish-container.cpio</string>
+			<key>NXPermission</key>
+			<integer>420</integer>
 		</dict>
 	</array>
-
-	<!-- Optional hooks (not built by this ROM):
-	     - NXRomInstaller / NXRomUninstaller: dylib paths exporting
-	       NXRomInstall() / NXRomUninstall() run at flash/unflash.
-	     - NXRomBootLogo: { Light, Dark } image paths relative to the slot,
-	       shown by the bootloader splash. -->
 </dict>
 </plist>

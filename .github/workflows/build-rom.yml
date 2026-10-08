@@ -1,58 +1,150 @@
 name: Build ROM
 
+# Builds the Linux ROM (Linux/) — the Nyxian slot host image plus the pinned
+# x86-64 Linux kernel and rish container initramfs — and uploads rom.zip.
+#
+# rish (the pure-Rust, JIT-less x86-64 interpreter) is checked out at a pinned
+# commit in both jobs, so the guest agent, the FFI host library, and the boot
+# contract are all reproducible.
+#
+# Guest images: the kernel is downloaded from a pinned Alpine URL and the
+# initramfs is built by rish's own hash-verified builder (ubuntu runner).
+# Set the repository variables RISH_INITRD_URL + RISH_INITRD_SHA256 to switch
+# the initramfs to a prebuilt release asset instead.
+
 on:
   push:
     paths:
-      - 'ROMs/**'
+      - 'Linux/**'
       - '.github/workflows/build-rom.yml'
   pull_request:
     paths:
-      - 'ROMs/**'
+      - 'Linux/**'
       - '.github/workflows/build-rom.yml'
   workflow_dispatch:
+    inputs:
+      rish-rev:
+        description: 'rish revision to build (commit SHA; default: pinned)'
+        required: false
+        default: ''
+
+env:
+  RISH_PINNED: 9020e9648115bd9ae8eb5215dd3e7ac76620da3f
+  RISH_TARGET: aarch64-apple-ios
 
 concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
+  group: build-rom-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
-  build:
-    name: Build Minecraft Dungeons ROM
-    runs-on: macos-latest
+  guest-images:
+    name: Prepare pinned Linux guest images
+    runs-on: ubuntu-latest
     defaults:
       run:
-        working-directory: ROMs/Minecraft Dungeons
-
+        working-directory: Linux
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Verify Xcode / iOS SDK
+      - name: Checkout rish (pinned)
+        uses: actions/checkout@v4
+        with:
+          repository: ZSeven-W/rish
+          ref: ${{ github.event.inputs.rish-rev || env.RISH_PINNED }}
+          path: Linux/build/rish
+          fetch-depth: 1
+
+      - name: Install Rust (guest agent musl target)
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: x86_64-unknown-linux-musl
+
+      - name: Install archive and squashfs tooling
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq cpio squashfs-tools
+
+      - name: Stage guest images
+        env:
+          RISH_INITRD_URL: ${{ vars.RISH_INITRD_URL }}
+          RISH_INITRD_SHA256: ${{ vars.RISH_INITRD_SHA256 }}
         run: |
           set -e
+          ./scripts/prepare-guest-images.sh
+          echo '--- staged files ---'
+          ls -lah build/guest
+          shasum -a 256 build/guest/*
+
+      - name: Upload guest images
+        uses: actions/upload-artifact@v4
+        with:
+          name: guest-images
+          path: Linux/build/guest
+          if-no-files-found: error
+
+  build:
+    name: Build Linux ROM
+    runs-on: macos-latest
+    needs: guest-images
+    defaults:
+      run:
+        working-directory: Linux
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Download guest images
+        uses: actions/download-artifact@v4
+        with:
+          name: guest-images
+          path: Linux/build/guest
+
+      - name: Mark guest images prepared
+        run: touch build/guest/.prepared
+
+      - name: Checkout rish (pinned)
+        uses: actions/checkout@v4
+        with:
+          repository: ZSeven-W/rish
+          ref: ${{ github.event.inputs.rish-rev || env.RISH_PINNED }}
+          path: Linux/build/rish
+          fetch-depth: 1
+
+      - name: Install Rust (iOS device target)
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ env.RISH_TARGET }}
+
+      - name: Verify Xcode / iOS SDK
+        run: |
           xcodebuild -version
           xcrun --sdk iphoneos --show-sdk-version
 
-      - name: Validate manifest.plist
-        run: |
-          set -e
-          make validate
+      - name: Build librish_ffi.a (JIT-less x86-64 interpreter)
+        working-directory: ${{ github.workspace }}/Linux/build/rish
+        run: cargo build --release --target ${{ env.RISH_TARGET }} -p rish-ffi
+      # Note: without this explicit step, `make` builds the library itself via
+      # the $(RISH_FFI) rule; the explicit build keeps the slow compile visible.
+
+      - name: Validate manifest
+        run: make validate
 
       - name: Build rom.zip
-        run: |
-          set -e
-          make
+        run: make
 
       - name: Sanity check package
         run: |
           set -e
           unzip -l rom.zip
-          printf '\nmanifest.plist in package:\n'
-          unzip -p rom.zip ROM/manifest.plist | head -40
+          for entry in ROM/manifest.plist ROM/main ROM/assets/bootlogo.png ROM/kernel/vmlinuz-virt-6.18.35 ROM/initramfs/rish-container.cpio; do
+            test "$(unzip -l rom.zip | grep -c "$entry")" = "1"
+            printf 'ok: %s\n' "$entry"
+          done
 
       - name: Upload rom.zip
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@v4
         with:
-          name: minecraft-dungeons-rom
-          path: ROMs/Minecraft Dungeons/rom.zip
+          name: linux-rom
+          path: Linux/rom.zip
           if-no-files-found: error

@@ -1,7 +1,0 @@
-# Nyxian ROM build artifacts
-/build/
-/Application/
-/main
-/manifest.sign
-/rom.zip
-/.rompkg/

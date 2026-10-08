@@ -1,0 +1,17 @@
+# Linux ROM guest images
+# name<TAB>size<TAB>sha256<TAB>source
+#
+#   source = https://...   downloaded and verified against this lock
+#   source = build:<script> produced by rish's own hash-verified builder
+#            (path relative to the rish checkout). size 0 / all-zero sha256
+#            marks a built artifact that rish's build verifies instead.
+#
+# Kernel: vmlinuz-virt from the Alpine 3.24.1 netboot release, renamed for
+# the slot path referenced in manifest.plist (kernel/vmlinuz-virt-6.18.35).
+vmlinuz-virt-6.18.35	12575744	1e6bf9027720c75c3ed0d79171f21b5791ee40ca9795d07c7c6e04dc5ea2ae90	https://dl-cdn.alpinelinux.org/alpine/v3.24/releases/x86_64/netboot-3.24.1/vmlinuz-virt
+# Initramfs: rish's interactive container initramfs (busybox + guest agent).
+# rish pins every input in guest/x86_64/assets.lock.tsv (and derived.lock);
+# building here needs squashfs-tools and the x86_64-unknown-linux-musl rust
+# target. Set RISH_INITRD_URL/RISH_INITRD_SHA256 to use a prebuilt release
+# asset instead.
+rish-container.cpio	0	0000000000000000000000000000000000000000000000000000000000000000	build:guest/x86_64/build-container-initramfs.sh
