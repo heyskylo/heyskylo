@@ -62,8 +62,22 @@ static NSString *NXSHA256OfFile(NSString *path)
     return hex;
 }
 
+@interface NXGuestImageManager () <NSURLSessionDownloadDelegate>
+
+@property (nonatomic, copy) void (^progressHandler)(NSString *phase, double progress);
+@property (nonatomic, copy) void (^completionHandler)(NSError * _Nullable error);
+@property (nonatomic, strong) NSURLSession *session;
+@property (nonatomic, strong) NSURLSessionDownloadTask *task;
+@property (nonatomic, assign) BOOL cancelled;
+
+- (void)reportXZProgress:(unsigned long long)consumed total:(unsigned long long)total;
+
+@end
+
 /* C-function bridge: the XZ driver reports progress through a plain C
-   pointer, hop to the main queue before touching the ObjC side. */
+   pointer, hop to the main queue before touching the ObjC side. Defined
+   after the class extension so the compiler has seen the private method
+   declaration this block calls. */
 static void NXGuestImageXZProgress(void *ctx,
                                    unsigned long long consumed,
                                    unsigned long long total,
@@ -75,16 +89,6 @@ static void NXGuestImageXZProgress(void *ctx,
         [manager reportXZProgress:consumed total:total];
     });
 }
-
-@interface NXGuestImageManager () <NSURLSessionDownloadDelegate>
-
-@property (nonatomic, copy) void (^progressHandler)(NSString *phase, double progress);
-@property (nonatomic, copy) void (^completionHandler)(NSError * _Nullable error);
-@property (nonatomic, strong) NSURLSession *session;
-@property (nonatomic, strong) NSURLSessionDownloadTask *task;
-@property (nonatomic, assign) BOOL cancelled;
-
-@end
 
 @implementation NXGuestImageManager
 

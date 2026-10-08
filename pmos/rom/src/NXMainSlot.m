@@ -11,6 +11,8 @@
 #import <UIKit/UIKit.h>
 #import <LindChain/Phone/NXPostmarketOSViewController.h>
 
+static UIWindow *gSlotWindow;
+
 static UIViewController *NXSlotRootViewController(void)
 {
     static UIViewController *controller;
@@ -44,8 +46,7 @@ void *NXSlotCreateWindow(void *scenePtr)
     UIWindow *window = [[UIWindow alloc] initWithWindowScene:scene];
     window.rootViewController = NXSlotRootViewController();
 
-    static UIWindow *slotWindow;
-    slotWindow = window;
+    gSlotWindow = window;
 
     return (__bridge_retained void *)window;
 }
@@ -53,8 +54,5 @@ void *NXSlotCreateWindow(void *scenePtr)
 __attribute__((visibility("default")))
 void NXSlotDidAppear(void)
 {
-    for (UIWindow *window in UIApplication.sharedApplication.windows)
-    {
-        [window makeKeyAndVisible];
-    }
+    [gSlotWindow makeKeyAndVisible];
 }

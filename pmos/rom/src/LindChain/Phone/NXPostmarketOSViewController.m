@@ -68,14 +68,18 @@
     _spinner.translatesAutoresizingMaskIntoConstraints = NO;
     _spinner.color = [UIColor colorWithWhite:0.95 alpha:1.0];
 
-    _actionButton = [UIButton buttonWithType:UIButtonTypeSystem];
+    UIButtonConfiguration *configuration = [UIButtonConfiguration filledButtonConfiguration];
+    configuration.baseBackgroundColor = [UIColor colorWithRed:0.55 green:0.85 blue:0.62 alpha:1.0];
+    configuration.baseForegroundColor = [UIColor colorWithWhite:0.05 alpha:1.0];
+    configuration.cornerStyle = UIButtonConfigurationCornerStyleLarge;
+    configuration.contentInsets = NSDirectionalEdgeInsetsMake(12, 24, 12, 24);
+    configuration.titleTextAttributesTransformer = ^NSDictionary<NSAttributedStringKey, id> *(NSDictionary<NSAttributedStringKey, id> *incoming) {
+        NSMutableDictionary<NSAttributedStringKey, id> *outgoing = [incoming mutableCopy];
+        outgoing[NSFontAttributeName] = [UIFont systemFontOfSize:15 weight:UIFontWeightSemibold];
+        return outgoing;
+    };
+    _actionButton = [UIButton buttonWithConfiguration:configuration];
     _actionButton.translatesAutoresizingMaskIntoConstraints = NO;
-    _actionButton.titleLabel.font = [UIFont systemFontOfSize:15 weight:UIFontWeightSemibold];
-    _actionButton.backgroundColor = [UIColor colorWithRed:0.55 green:0.85 blue:0.62 alpha:1.0];
-    [_actionButton setTitleColor:[UIColor colorWithWhite:0.05 alpha:1.0] forState:UIControlStateNormal];
-    _actionButton.layer.cornerRadius = 12;
-    _actionButton.layer.masksToBounds = YES;
-    _actionButton.contentEdgeInsets = UIEdgeInsetsMake(12, 24, 12, 24);
     _actionButton.hidden = YES;
     [_actionButton addTarget:self action:@selector(actionButtonTapped) forControlEvents:UIControlEventTouchUpInside];
 
