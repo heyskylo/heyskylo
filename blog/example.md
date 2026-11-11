@@ -6,7 +6,7 @@ author: Skylo
 tags: [ios, games]
 font: sans      # or mono
 weight: 400     # 100–1000
-width: 100      # 25–151
+width: 120      # 25–151
 ---
 
 # Test blog post
