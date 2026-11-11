@@ -1,9 +1,9 @@
 ---
 title: Running Linux on iOS Without JIT
-description: A technical deep dive into running a Linux environment on iOS using native ARM64 execution, an interpreted userspace, and a few creative workarounds.
+description: A look into how I got a Linux environment running on an iPhone without JIT compilation, using ARM64 execution and a custom userspace execution layer.
 date: 2026-11-12
 author: Skylo
-tags: [ios, linux, arm64, systems, development]
+tags: [ios, linux, arm64, rust, systems]
 font: mono
 weight: 300
 width: 110
@@ -11,182 +11,296 @@ width: 110
 
 # Running Linux on iOS Without JIT
 
-**A real Linux environment, running on an iPhone, without relying on Just-In-Time compilation.**
+**Getting Linux running locally on an iPhone, without relying on JIT compilation.**
 
-Running Linux on iOS has always been an interesting engineering challenge. Apple's restrictions around executable memory, code signing, and JIT compilation make traditional virtualization approaches difficult to implement, especially without special entitlements.
+I've been experimenting with low-level development on iOS for a while, and eventually I started wondering how far I could push things without relying on the usual JIT-based approaches.
 
-I wanted to explore a different approach: instead of trying to make iOS behave like a conventional desktop virtualization host, build an execution environment around the limitations of the platform.
+I wanted to get a Linux environment running directly on an iPhone. Not through SSH, not through a remote server, and not through some cloud-based workaround.
 
-The result is a Linux environment capable of running on iOS without requiring JIT compilation.
+Actually running it locally.
 
----
+After quite a bit of experimenting, debugging, and help from Claude, I managed to get it working.
 
-## 01 / The architecture
+<aside>
+**Project overview**
 
-The most important design decision was separating kernel execution from userspace execution.
-
-Rather than attempting to emulate an entire computer, the implementation uses a hybrid execution model:
-
-| Component | Execution model |
+| Property | Details |
 |---|---|
-| Linux kernel | Native ARM64 |
-| Userspace | Software interpretation |
-| CPU architecture | ARM64 |
-| Memory | Host-managed memory |
-| JIT compilation | Not required |
+| Platform | iOS |
+| Target architecture | ARM64 |
+| Environment | Linux |
+| Execution | Native kernel + interpreted userspace |
+| JIT dependency | None |
+| Main language | Rust |
+| Development assistance | Claude |
+</aside>
 
-This avoids the overhead and complexity of full hardware emulation while keeping the execution model compatible with iOS restrictions.
+## 01 / Why is this difficult?
 
-### Kernel execution
+iOS isn't exactly designed to be a general-purpose virtualization platform.
 
-The Linux kernel is built for the device's ARM64 architecture, allowing its instructions to execute natively rather than being translated through a CPU emulator.
+Apple imposes restrictions around executable memory, code signing, and dynamically generated machine code. This makes traditional JIT-based execution difficult without the appropriate entitlements.
 
-This is particularly important on mobile hardware, where unnecessary emulation overhead can quickly become a performance bottleneck.
+On a normal Linux machine, you have considerably more freedom when it comes to memory permissions and executing dynamically generated code.
 
-The kernel handles the familiar responsibilities:
+On iOS, you have to design around what the platform actually allows.
 
-- Process and task management.
-- Virtual memory management.
-- Scheduling.
-- Filesystem operations.
-- Kernel-level system interfaces.
+I didn't want the entire project to depend on obtaining special JIT entitlements, so I started looking into alternative execution models.
 
-### Userspace execution
+### The main restrictions
 
-Userspace requires a different approach.
+| Area | Problem |
+|---|---|
+| JIT compilation | Dynamically generated executable code is restricted |
+| Code signing | Executable code must comply with Apple's signing requirements |
+| Memory protection | Executable memory permissions are constrained |
+| Virtualization | Hardware virtualization isn't generally available to ordinary iOS apps |
+| Process isolation | The environment must operate within normal application boundaries |
 
-Since arbitrary executable code cannot simply be generated and executed through a conventional JIT on iOS, guest userspace instructions are handled through an interpreter.
+The interesting part was figuring out how to build around these limitations rather than fighting them.
 
-The interpreter fetches and decodes guest instructions, then implements their behavior using operations available to the host process.
+## 02 / The architecture
 
-Conceptually:
+The biggest decision was separating kernel execution from userspace execution.
+
+Instead of treating everything as one giant emulation problem, I used a hybrid execution model.
 
 ```text
-Guest application
-       |
-       v
-Instruction fetch
-       |
-       v
-Instruction decoder
-       |
-       v
-Software interpreter
-       |
-       v
-Native ARM64 operations
-       |
-       v
-iOS host environment
+                 iOS APPLICATION
+                       |
+             +---------+---------+
+             |                   |
+             v                   v
+        Linux Kernel        Userspace Layer
+          ARM64             Interpreter
+             |                   |
+             v                   v
+       Native execution    Instruction decoding
+             |                   |
+             +---------+---------+
+                       |
+                       v
+                 Host resources
+                       |
+                       v
+                  iPhone hardware
 ```
 
-This allows userspace execution without dynamically generating executable machine code.
+### Component breakdown
 
----
+| Component | Responsibility |
+|---|---|
+| Linux kernel | Core operating system functionality |
+| ARM64 execution | Native instruction execution |
+| Interpreter | Executes guest userspace instructions |
+| Memory subsystem | Maintains guest execution memory |
+| Host runtime | Connects execution to iOS resources |
 
-## 02 / Working around the JIT limitation
+This approach avoids having to emulate an entire physical computer while still providing an execution environment for Linux userspace.
 
-One of the biggest challenges was designing around Apple's executable memory restrictions.
+## 03 / ARM64 and native execution
 
-Traditional JIT engines generally rely on allocating memory, generating machine instructions, and transitioning that memory into an executable state.
+One advantage of targeting ARM64 is that modern iPhones already use ARM-based processors.
 
-That approach isn't something I wanted this project to depend on.
+The kernel can therefore be built for the device's native instruction set.
 
-Instead, interpretation provides a different execution path.
+This removes the need for traditional CPU instruction emulation at the kernel level.
 
-The interpreter processes instructions without producing dynamically generated executable code.
+A simplified comparison:
 
-This has trade-offs:
+| Approach | Instruction handling |
+|---|---|
+| Full CPU emulation | Guest instructions are emulated |
+| Dynamic translation | Guest instructions are translated into host code |
+| Native ARM64 | Compatible instructions execute directly |
 
-- More instruction-dispatch overhead.
-- Potentially lower userspace performance.
-- Greater implementation complexity.
-- No dependency on JIT entitlements.
+Native execution is particularly useful on mobile hardware, where avoiding unnecessary translation overhead can make a meaningful difference.
 
-The important distinction is that **not requiring JIT doesn't mean not executing native code**.
+Of course, native execution doesn't automatically solve every compatibility issue. The runtime still needs to handle the interfaces and resources expected by the guest environment.
 
-The kernel can still execute native ARM64 instructions while userspace follows a separate interpreted execution path.
+## 04 / Userspace without JIT
 
----
+This is probably the most interesting part of the implementation.
 
-## 03 / Memory and execution
+Even if the kernel executes natively, userspace still needs a way to execute applications without depending on JIT compilation.
 
-Memory management is another important part of making the environment work reliably.
+The solution is software interpretation.
 
-The implementation has to maintain a distinction between guest execution state and the host process's address space.
+An interpreter maintains the guest CPU state and processes instructions individually.
 
-Some of the important considerations include:
+### Execution cycle
 
-- Guest memory representation.
-- Register and instruction state.
-- Memory access validation.
-- Stack management.
-- Synchronization between execution threads.
-- Handling exceptions and invalid instructions.
+```text
+       Fetch instruction
+               |
+               v
+        Decode instruction
+               |
+               v
+       Read guest registers
+               |
+               v
+       Execute instruction
+               |
+               v
+       Update CPU state
+               |
+               v
+        Advance program counter
+               |
+               +-------> Repeat
+```
 
-This becomes especially important when running more than simple test programs.
+A simplified example of what an execution loop might look like:
 
-A working execution environment needs to handle much more than just decoding instructions. It needs to maintain consistent state across the entire execution lifecycle.
+```rust
+loop {
+    let instruction = fetch_instruction(pc);
+    let decoded = decode_instruction(instruction);
 
----
+    execute_instruction(decoded, &mut cpu_state);
 
-## 04 / Why iOS makes this interesting
+    pc = cpu_state.program_counter;
+}
+```
 
-iOS isn't designed to be a general-purpose virtualization host.
+This is illustrative pseudocode rather than a complete implementation.
 
-There are platform restrictions around executable memory, process isolation, entitlements, and access to lower-level system interfaces.
+### What needs to be tracked?
 
-That means solutions designed for Linux desktops don't necessarily translate directly to iOS.
+| State | Purpose |
+|---|---|
+| Program counter | Tracks the next instruction |
+| General registers | Stores guest CPU values |
+| Stack pointer | Tracks the guest stack |
+| Flags | Stores processor condition state |
+| Memory state | Represents guest memory |
+| Execution state | Tracks the current execution context |
 
-The interesting part of this project was figuring out how to work within those restrictions instead of treating them as something that could simply be bypassed.
+The tricky part isn't simply decoding instructions. It's making sure every operation updates the guest state correctly.
 
-By using native ARM64 execution where possible and interpretation where necessary, the implementation avoids depending on conventional JIT-based execution.
+A mistake in register handling, branching, or memory access can cause failures much further down the execution path.
 
----
+## 05 / Memory management
 
-## 05 / Development with Claude
+Memory management deserves its own section because the guest and host environments have different expectations.
 
-A surprising amount of the development process involved working alongside Claude.
+Linux expects to manage its own virtual address space, while the iOS application operates within the host process's memory constraints.
 
-I used it to help investigate implementation details, reason about execution models, debug difficult issues, and iterate on different approaches.
+The implementation has to maintain a clear separation between the two.
 
-It was particularly useful when dealing with unfamiliar low-level code and tracking down problems that weren't immediately obvious.
+### Important considerations
 
-Of course, AI doesn't magically produce a working Linux environment. There was still a lot of experimentation, debugging, testing, and understanding what was actually happening under the hood.
+| Area | What needs to happen |
+|---|---|
+| Address translation | Resolve guest memory accesses |
+| Allocation | Reserve memory for guest execution |
+| Permissions | Validate memory access |
+| Stack | Maintain guest stack state |
+| Heap | Handle dynamic allocations |
+| Alignment | Respect architecture requirements |
+| Synchronization | Keep execution state consistent |
 
-But having that additional development assistance made exploring such a complicated problem considerably more approachable.
+This becomes especially important when applications start doing more than basic operations.
 
----
+Memory bugs can be particularly annoying because their symptoms aren't always immediate. An invalid access might cause a crash somewhere completely unrelated to the original problem.
 
-## 06 / What's next?
+## 06 / Native execution vs interpretation
 
-Getting Linux running on iOS without JIT is a pretty interesting milestone, but there's still plenty of room to improve.
+One of the trade-offs with this architecture is performance.
 
-Some areas worth exploring further:
+Native execution and interpretation have very different characteristics.
 
-- [ ] Improving userspace interpretation performance.
-- [ ] Expanding compatibility with Linux applications.
-- [ ] Improving filesystem integration.
-- [ ] Better networking support.
-- [ ] More robust process and thread handling.
-- [ ] Improving overall stability and resource management.
+| Characteristic | Native execution | Interpretation |
+|---|---|---|
+| Instruction handling | Direct CPU execution | Software decoding |
+| Runtime overhead | Lower | Higher |
+| JIT required | No | No |
+| Compatibility | Architecture dependent | Depends on implemented instructions |
+| Implementation complexity | Platform dependent | More interpreter logic |
 
-The long-term goal is to make the experience as practical as possible, rather than simply proving that it can boot.
+The important thing is that avoiding JIT doesn't mean avoiding native execution entirely.
 
----
+Different parts of the environment can use different execution strategies.
 
-## Final thoughts
+That's what makes this approach interesting.
 
-I think people sometimes underestimate how much can be done on iOS when you approach the platform differently.
+## 07 / Development process
 
-Instead of trying to recreate a conventional desktop virtualization stack, this project explores a hybrid approach that takes advantage of native ARM64 execution while avoiding JIT entirely.
+This project involved quite a bit of experimentation.
 
-And yes, apparently you can run Linux on an iPhone without JIT.
+A lot of the time, getting one component working exposed problems somewhere else.
 
-A little help from Claude, a lot of debugging, and quite a bit of curiosity.
+For example, an application failing to execute doesn't necessarily mean the instruction decoder is broken. It could be a memory issue, incorrect execution state, or an incompatibility somewhere in the runtime.
+
+Having a way to inspect state and narrow down failures is extremely important when working at this level.
+
+### Development workflow
+
+```text
+Implementation
+      |
+      v
+Build / compile
+      |
+      v
+Run on iOS
+      |
+      v
+Inspect failures
+      |
+      v
+Debug execution state
+      |
+      v
+Adjust implementation
+      |
+      +------> Repeat
+```
+
+### A little help from Claude
+
+I also used Claude throughout development.
+
+It helped with understanding unfamiliar implementation details, exploring different approaches, investigating compiler errors, and working through debugging problems.
+
+It definitely wasn't a case of sending one prompt and magically getting a working Linux environment.
+
+There was a lot of back and forth, testing, and fixing things that didn't work.
+
+Still, having an assistant available to reason through complicated low-level code made development considerably easier.
+
+## 08 / Current limitations and future work
+
+Getting the environment running is one thing. Making it practical for everyday use is another.
+
+There are still plenty of areas I'd like to explore.
+
+| Area | Future improvements |
+|---|---|
+| Performance | Reduce interpreter overhead |
+| Compatibility | Support more userspace applications |
+| Filesystem | Improve host and guest integration |
+| Networking | Expand network functionality |
+| Memory | Improve allocation and memory handling |
+| Stability | Test longer and more complex workloads |
+
+These are areas I'd like to continue working on, rather than claims that everything is already implemented.
+
+## 09 / Final thoughts
+
+I originally started this because I was curious about how far I could push iOS without JIT.
+
+I ended up spending a lot of time working with ARM64, instruction execution, memory management, and the details involved in getting an operating system to run inside another operating system.
+
+It's been a pretty interesting project, especially considering how restrictive the platform can be.
+
+The main takeaway for me is that there are often more ways to approach a problem than the obvious ones.
+
+And apparently, one of those ways is getting Linux running on an iPhone without JIT.
 
 **More experiments coming soon.**
 
-— Skylo
+---
 
-*Founder of Kelly Inc.*
+<small>Skylo · Founder of Kelly Inc. · November 12, 2026</small>
